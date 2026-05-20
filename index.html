@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catatan Tabungan Cloud</title>
+    <!-- Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS untuk export & import Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        /* Custom scrollbar minimalis untuk tabel */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Wrapper Kontainer Utama yang Dinamis (Mendukung hingga layar Ultra-Wide / PID) -->
+    <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 flex-grow">
+        
+        <!-- Header & Cloud Sync Status (Fleksibel & Responsif) -->
+        <div class="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 border-b border-gray-200 pb-6">
+            <div>
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 flex flex-wrap items-center gap-2">
+                    Catatan Tabungan 
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full mr-1.5 animate-pulse"></span>
+                        Edisi Cloud
+                    </span>
+                </h1>
+                <p class="text-sm sm:text-base text-gray-500 mt-1">Kelola, impor, dan sinkronkan tabungan Anda di semua perangkat secara real-time.</p>
+            </div>
+            
+            <!-- Cloud Sync Card (Fleksibel menyesuaikan ukuran layar) -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 lg:self-start xl:self-center">
+                <div class="flex-grow">
+                    <span class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider block">Kode Sinkronisasi Perangkat</span>
+                    <div class="flex items-center gap-2 mt-1">
+                        <span id="syncCodeDisplay" class="font-mono text-base sm:text-lg lg:text-xl font-bold text-blue-600 tracking-wider">Memuat...</span>
+                        <button onclick="copySyncCode()" class="text-gray-400 hover:text-blue-600 transition p-1.5 rounded-lg hover:bg-gray-100" title="Salin Kode">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="hidden sm:block h-10 w-px bg-gray-200"></div>
+                <div class="flex flex-col gap-1.5 justify-center">
+                    <button onclick="openSyncModal()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg transition text-center min-h-[38px] flex items-center justify-center">
+                        Hubungkan Perangkat Lain
+                    </button>
+                    <div class="flex items-center gap-1.5 justify-center sm:justify-start">
+                        <span id="syncStatusDot" class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                        <span id="syncStatusText" class="text-xs text-gray-500 font-medium">Menghubungkan ke cloud...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ringkasan Saldo (Grid dinamis 1, 2, atau 3 kolom) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100 border-l-4 border-l-blue-500 flex flex-col justify-between">
+                <p class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Saldo</p>
+                <p id="totalSaldo" class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 mt-2 break-all">Rp 0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100 border-l-4 border-l-green-500 flex flex-col justify-between">
+                <p class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Pemasukan (Masuk)</p>
+                <p id="totalMasuk" class="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-2 break-all">Rp 0</p>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100 border-l-4 border-l-red-500 flex flex-col justify-between sm:col-span-2 lg:col-span-1">
+                <p class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Pengeluaran (Keluar)</p>
+                <p id="totalKeluar" class="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600 mt-2 break-all">Rp 0</p>
+            </div>
+        </div>
+
+        <!-- Layout Utama: Form Kiri / Atas, Tabel Kanan / Bawah -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Form Input (Lebar 4 dari 12 kolom di layar besar) -->
+            <div class="lg:col-span-4 xl:col-span-4">
+                <div class="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-150 sticky top-6">
+                    <h2 class="text-lg font-bold mb-4 border-b pb-2 text-gray-900">Tambah Catatan</h2>
+                    <form id="transactionForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Tanggal</label>
+                            <input type="date" id="inputTanggal" required class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Keterangan</label>
+                            <input type="text" id="inputKeterangan" placeholder="Contoh: Gaji bulani ini, Beli sepatu..." required class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5">Jenis Transaksi</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label id="labelMasuk" class="border border-gray-300 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition min-h-[44px]">
+                                    <input type="radio" name="jenis" value="masuk" required class="mr-2" onclick="updateRadioStyle()">
+                                    <span class="font-semibold text-sm text-green-600">Masuk</span>
+                                </label>
+                                <label id="labelKeluar" class="border border-gray-300 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition min-h-[44px]">
+                                    <input type="radio" name="jenis" value="keluar" required class="mr-2" onclick="updateRadioStyle()">
+                                    <span class="font-semibold text-sm text-red-600">Keluar</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Jumlah (Rp)</label>
+                            <input type="number" id="inputJumlah" placeholder="0" min="1" required class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition mt-4 flex items-center justify-center gap-2 shadow-sm min-h-[46px] text-sm">
+                            <span id="btnText">Simpan Catatan</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabel Data (Lebar 8 dari 12 kolom di layar besar) -->
+            <div class="lg:col-span-8 xl:col-span-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-150 overflow-hidden">
+                    <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white">
+                        <h2 class="text-lg font-bold text-gray-900">Riwayat Transaksi</h2>
+                        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                            <!-- Input File Tersembunyi untuk Impor -->
+                            <input type="file" id="importExcelInput" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+                            
+                            <button onclick="triggerImport()" class="flex-grow sm:flex-initial text-xs sm:text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-1.5 border border-blue-200 min-h-[40px]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                Impor Excel
+                            </button>
+                            
+                            <button onclick="exportToExcel()" class="flex-grow sm:flex-initial text-xs sm:text-sm bg-green-50 hover:bg-green-100 text-green-700 px-4 py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-1.5 border border-green-200 min-h-[40px]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"></path><path d="M12 11v6"></path><path d="M9 14h6"></path></svg>
+                                Ekspor Excel
+                            </button>
+                            
+                            <button onclick="clearAllData()" class="flex-grow sm:flex-initial text-xs sm:text-sm border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 rounded-lg font-semibold transition text-center min-h-[40px]">
+                                Kosongkan Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabel Wrapper dengan Scroll Kustom untuk mencegah pecah di layar HP -->
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse min-w-[600px] lg:min-w-0">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-500 text-xs sm:text-sm border-b border-gray-150">
+                                    <th class="py-3.5 px-6 font-semibold">Tanggal</th>
+                                    <th class="py-3.5 px-6 font-semibold">Keterangan</th>
+                                    <th class="py-3.5 px-6 font-semibold">Jenis</th>
+                                    <th class="py-3.5 px-6 font-semibold text-right">Jumlah</th>
+                                    <th class="py-3.5 px-6 font-semibold text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-gray-100 text-sm">
+                                <!-- Data akan dirender di sini via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pesan Kosong -->
+                    <div id="emptyState" class="hidden p-12 text-center text-gray-500">
+                        <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                        </svg>
+                        <p class="font-medium text-gray-600">Belum ada catatan tabungan.</p>
+                        <p class="text-sm text-gray-400 mt-1">Silakan tambah catatan atau pilih "Impor Excel" untuk memuat file ekspor Anda.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Modern -->
+    <footer class="w-full text-center py-6 text-xs text-gray-400 border-t border-gray-200 bg-white mt-12">
+        <div class="max-w-[1600px] mx-auto px-4">
+            Catatan Tabungan Cloud &copy; 2026 - Mendukung Laptop, HP, Tablet, dan PID
+        </div>
+    </footer>
+
+    <!-- Modal Sinkronisasi -->
+    <div id="syncModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in duration-200">
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Hubungkan Perangkat Baru</h3>
+            <p class="text-sm text-gray-500 mb-4">
+                Masukkan Kode Sinkronisasi dari perangkat lama Anda di bawah ini untuk menyatukan dan mengakses data yang sama secara live.
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Kode Sinkronisasi Perangkat Lama</label>
+                    <input type="text" id="syncInputCode" placeholder="Contoh: TAB-XXXXXX" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 font-mono text-center tracking-wider text-lg uppercase focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="closeSyncModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 rounded-lg transition">Batal</button>
+                    <button onclick="connectExistingCode()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition">Hubungkan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Custom -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50 flex items-center gap-2">
+        <span id="toastMessage">Pesan Toast</span>
+    </div>
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global State & UI References
+        let transactions = [];
+        let syncCode = '';
+        let dbListener = null;
+        let isAuthReady = false;
+
+        // Inisialisasi Firebase Config dari Platform Environment
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Daftarkan fungsi ke objek window agar bisa diakses dari tag HTML onclick
+        window.handleFormSubmit = handleFormSubmit;
+        window.deleteTransaction = deleteTransaction;
+        window.clearAllData = clearAllData;
+        window.exportToExcel = exportToExcel;
+        window.triggerImport = triggerImport;
+        window.importFromExcel = importFromExcel;
+        window.copySyncCode = copySyncCode;
+        window.openSyncModal = openSyncModal;
+        window.closeSyncModal = closeSyncModal;
+        window.connectExistingCode = connectExistingCode;
+        window.updateRadioStyle = updateRadioStyle;
+
+        // Atur Tanggal Hari ini secara Default
+        document.getElementById('inputTanggal').valueAsDate = new Date();
+
+        // 1. Jalankan Autentikasi terlebih dahulu (RULE 3)
+        const initAuth = async () => {
+            updateSyncStatus('yellow', 'Menghubungkan ke server...');
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth failed:", error);
+                updateSyncStatus('red', 'Gagal terhubung ke Cloud.');
+                showToast("Koneksi cloud gagal. Menggunakan mode luring.");
+            }
+        };
+
+        initAuth();
+
+        // 2. Pantau Perubahan Status Autentikasi
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                isAuthReady = true;
+                setupSyncCodeAndListener();
+            } else {
+                isAuthReady = false;
+                updateSyncStatus('red', 'Sesi cloud terputus.');
+            }
+        });
+
+        // Setup Kode Sinkronisasi & Firestore Listener (RULE 1 & 2)
+        function setupSyncCodeAndListener() {
+            // Ambil dari localStorage jika sebelumnya sudah pernah tersimpan
+            let localCode = localStorage.getItem('savings_sync_code');
+            
+            if (!localCode) {
+                // Buat kode sinkronisasi unik baru jika belum ada
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let randomId = '';
+                for (let i = 0; i < 6; i++) {
+                    randomId += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                localCode = `TAB-${randomId}`;
+                localStorage.setItem('savings_sync_code', localCode);
+            }
+
+            syncCode = localCode;
+            document.getElementById('syncCodeDisplay').textContent = syncCode;
+
+            // Jika ada listener lama, matikan dulu agar tidak terjadi kebocoran memori
+            if (dbListener) {
+                dbListener();
+            }
+
+            // Jalankan Listener Real-time (RULE 1: Strict Paths, RULE 2: No Complex Queries)
+            updateSyncStatus('yellow', 'Mengunduh data...');
+            
+            // Path: /artifacts/{appId}/public/data/savings/{syncCode}
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'savings', syncCode);
+
+            dbListener = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    transactions = data.transactions || [];
+                    updateSyncStatus('green', 'Cloud Terhubung (Real-time)');
+                } else {
+                    // Jika data baru di cloud kosong, sinkronkan data lokal lama (jika ada) ke cloud
+                    const savedLocalData = localStorage.getItem('dataTabungan');
+                    if (savedLocalData) {
+                        transactions = JSON.parse(savedLocalData);
+                    } else {
+                        transactions = [];
+                    }
+                    saveToCloud(transactions);
+                    updateSyncStatus('green', 'Cloud Terhubung (Baru)');
+                }
+                renderApp();
+            }, (error) => {
+                console.error("Error listening to snapshot:", error);
+                updateSyncStatus('red', 'Gagal memuat dari Cloud.');
+            });
+        }
+
+        // Simpan Data Tabungan ke Cloud
+        async function saveToCloud(updatedTransactions) {
+            if (!isAuthReady || !auth.currentUser) return;
+
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'savings', syncCode);
+            try {
+                await setDoc(docRef, {
+                    transactions: updatedTransactions,
+                    lastUpdated: new Date().toISOString()
+                });
+                // Simpan juga salinan cadangan ke localStorage
+                localStorage.setItem('dataTabungan', JSON.stringify(updatedTransactions));
+            } catch (error) {
+                console.error("Gagal menyimpan ke Cloud:", error);
+                showToast("Gagal menyimpan ke Cloud. Data tersimpan lokal.");
+            }
+        }
+
+        // Tampilkan Indikator Status Sync
+        function updateSyncStatus(color, text) {
+            const dot = document.getElementById('syncStatusDot');
+            const label = document.getElementById('syncStatusText');
+            
+            dot.className = 'w-2.5 h-2.5 rounded-full';
+            if (color === 'green') dot.classList.add('bg-green-500');
+            else if (color === 'yellow') dot.classList.add('bg-yellow-500');
+            else dot.classList.add('bg-red-500');
+
+            label.textContent = text;
+        }
+
+        // Hubungkan kode yang ada dari perangkat lain
+        async function connectExistingCode() {
+            const inputCode = document.getElementById('syncInputCode').value.trim().toUpperCase();
+            if (!inputCode) {
+                showToast("Silakan masukkan kode!");
+                return;
+            }
+
+            if (!inputCode.startsWith('TAB-') || inputCode.length < 8) {
+                showToast("Format kode salah! Contoh: TAB-XXXXXX");
+                return;
+            }
+
+            updateSyncStatus('yellow', 'Menghubungkan kode...');
+            
+            try {
+                // Periksa apakah dokumen tersebut sudah ada di cloud
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'savings', inputCode);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    // Jika ditemukan, gabungkan atau langsung gunakan data dari kode tersebut
+                    syncCode = inputCode;
+                    localStorage.setItem('savings_sync_code', syncCode);
+                    setupSyncCodeAndListener();
+                    closeSyncModal();
+                    showToast("Koneksi berhasil! Memuat data...");
+                } else {
+                    // Jika tidak ada di cloud, konfirmasi apakah ingin membuat data baru dengan kode tersebut
+                    if (confirm(`Kode "${inputCode}" tidak ditemukan di database cloud. Apakah Anda ingin membuat ruangan penyimpanan baru dengan kode ini?`)) {
+                        syncCode = inputCode;
+                        localStorage.setItem('savings_sync_code', syncCode);
+                        setupSyncCodeAndListener();
+                        closeSyncModal();
+                        showToast("Penyimpanan cloud baru dibuat!");
+                    } else {
+                        updateSyncStatus('green', 'Cloud Terhubung (Real-time)');
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal memeriksa kode. Coba lagi.");
+                updateSyncStatus('green', 'Cloud Terhubung (Real-time)');
+            }
+        }
+
+        // Kirim transaksi baru
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const tanggal = document.getElementById('inputTanggal').value;
+            const keterangan = document.getElementById('inputKeterangan').value;
+            const jenisRadio = document.querySelector('input[name="jenis"]:checked');
+            const jumlah = parseFloat(document.getElementById('inputJumlah').value);
+
+            if (!tanggal || !keterangan || !jenisRadio || !jumlah) {
+                showToast('Mohon lengkapi semua data!');
+                return;
+            }
+
+            const jenis = jenisRadio.value;
+
+            const newTransaction = {
+                id: Date.now().toString(),
+                tanggal,
+                keterangan,
+                jenis,
+                jumlah
+            };
+
+            const updatedTransactions = [...transactions, newTransaction];
+            
+            // Urutkan berdasarkan tanggal terbaru
+            updatedTransactions.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+
+            saveToCloud(updatedTransactions);
+
+            // Reset form
+            document.getElementById('inputKeterangan').value = '';
+            document.getElementById('inputJumlah').value = '';
+            jenisRadio.checked = false;
+            updateRadioStyle();
+            showToast("Catatan berhasil disimpan!");
+        }
+
+        // Hapus satu transaksi
+        function deleteTransaction(id) {
+            if(confirm('Apakah Anda yakin ingin menghapus catatan ini?')) {
+                const updatedTransactions = transactions.filter(t => t.id !== id);
+                saveToCloud(updatedTransactions);
+                showToast("Catatan telah dihapus.");
+            }
+        }
+
+        // Hapus semua data
+        function clearAllData() {
+            if(transactions.length === 0) return;
+            if(confirm('PERHATIAN: Anda yakin ingin menghapus SEMUA riwayat tabungan? Data akan ikut terhapus dari semua perangkat yang terhubung.')) {
+                saveToCloud([]);
+                showToast("Semua data berhasil dikosongkan.");
+            }
+        }
+
+        // Render ulang UI (Tabel & Ringkasan)
+        function renderApp() {
+            let totalMasuk = 0;
+            let totalKeluar = 0;
+            const tableBody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+            
+            tableBody.innerHTML = '';
+
+            if (transactions.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            transactions.forEach(t => {
+                // Kalkulasi
+                if (t.jenis === 'masuk') totalMasuk += t.jumlah;
+                else totalKeluar += t.jumlah;
+
+                // Render Baris Tabel
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50/80 transition group';
+                
+                const jenisLabel = t.jenis === 'masuk' 
+                    ? `<span class="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-semibold">Masuk</span>`
+                    : `<span class="px-2.5 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold">Keluar</span>`;
+                
+                const jumlahWarna = t.jenis === 'masuk' ? 'text-green-600' : 'text-red-600';
+                const jumlahPrefix = t.jenis === 'masuk' ? '+' : '-';
+
+                row.innerHTML = `
+                    <td class="py-3.5 px-6 whitespace-nowrap text-sm text-gray-700">${formatTanggal(t.tanggal)}</td>
+                    <td class="py-3.5 px-6 text-sm text-gray-900 font-medium">${t.keterangan}</td>
+                    <td class="py-3.5 px-6">${jenisLabel}</td>
+                    <td class="py-3.5 px-6 text-right font-semibold text-sm ${jumlahWarna}">${jumlahPrefix} ${formatRupiah(t.jumlah)}</td>
+                    <td class="py-3.5 px-6 text-center">
+                        <button onclick="deleteTransaction('${t.id}')" class="text-gray-400 hover:text-red-500 transition p-1.5 rounded-full hover:bg-red-50" title="Hapus">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // Update Kartu Ringkasan
+            const totalSaldo = totalMasuk - totalKeluar;
+            document.getElementById('totalMasuk').textContent = formatRupiah(totalMasuk);
+            document.getElementById('totalKeluar').textContent = formatRupiah(totalKeluar);
+            document.getElementById('totalSaldo').textContent = formatRupiah(totalSaldo);
+            
+            // Ubah warna saldo jika negatif
+            if(totalSaldo < 0) {
+                document.getElementById('totalSaldo').className = 'text-2xl sm:text-3xl lg:text-4xl font-extrabold text-red-600 mt-2 break-all';
+            } else {
+                document.getElementById('totalSaldo').className = 'text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 mt-2 break-all';
+            }
+        }
+
+        // Format angka ke format Rupiah
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(number);
+        }
+
+        // Format Tanggal (Misal: 15 Agustus 2023)
+        function formatTanggal(dateString) {
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(dateString).toLocaleDateString('id-ID', options);
+        }
+
+        // Copy Kode Sinkronisasi dengan kompatibilitas iFrame (execCommand)
+        function copySyncCode() {
+            const tempInput = document.createElement("input");
+            tempInput.value = syncCode;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            showToast("Kode sinkronisasi berhasil disalin!");
+        }
+
+        // Tampilkan Modal Sync
+        function openSyncModal() {
+            document.getElementById('syncInputCode').value = '';
+            const modal = document.getElementById('syncModal');
+            modal.classList.replace('hidden', 'flex');
+        }
+
+        // Tutup Modal Sync
+        function closeSyncModal() {
+            const modal = document.getElementById('syncModal');
+            modal.classList.replace('flex', 'hidden');
+        }
+
+        // Perbarui gaya label radio secara manual berdasarkan status pilihan
+        function updateRadioStyle() {
+            const labelMasuk = document.getElementById('labelMasuk');
+            const labelKeluar = document.getElementById('labelKeluar');
+            const radioMasuk = document.querySelector('input[value="masuk"]');
+            const radioKeluar = document.querySelector('input[value="keluar"]');
+
+            if(radioMasuk.checked) {
+                labelMasuk.className = "border-2 border-green-500 bg-green-50/40 rounded-lg p-3 flex items-center justify-center cursor-pointer transition min-h-[44px]";
+                labelKeluar.className = "border border-gray-300 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition min-h-[44px]";
+            } else if(radioKeluar.checked) {
+                labelKeluar.className = "border-2 border-red-500 bg-red-50/40 rounded-lg p-3 flex items-center justify-center cursor-pointer transition min-h-[44px]";
+                labelMasuk.className = "border border-gray-300 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition min-h-[44px]";
+            } else {
+                labelMasuk.className = "border border-gray-300 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition min-h-[44px]";
+                labelKeluar.className = "border border-gray-300 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition min-h-[44px]";
+            }
+        }
+
+        // Trigger input file impor
+        function triggerImport() {
+            document.getElementById('importExcelInput').click();
+        }
+
+        // Membaca dan Memproses File Excel yang Diunggah (Impor)
+        function importFromExcel(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Ambil sheet pertama
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Konversi ke format JSON JSON
+                    const rawRows = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    if (rawRows.length === 0) {
+                        showToast("File Excel kosong atau tidak sesuai format!");
+                        return;
+                    }
+
+                    const newTransactions = [];
+                    
+                    // Parsing baris per baris secara hati-hati
+                    rawRows.forEach((row, i) => {
+                        // Lewati baris ringkasan, baris kosong, atau baris total
+                        if (!row["Keterangan"] || row["Keterangan"] === "TOTAL" || row["Keterangan"] === "SALDO AKHIR") {
+                            return;
+                        }
+
+                        // Mengurai tanggal raw (mendukung format ekspor 'YYYY-MM-DD')
+                        let tanggalRaw = row["Tanggal (Format Raw)"] || row["Tanggal"];
+                        let tanggalStr = new Date().toISOString().split('T')[0]; // fallback hari ini
+                        
+                        if (tanggalRaw) {
+                            const parsedDate = new Date(tanggalRaw);
+                            if (!isNaN(parsedDate.getTime())) {
+                                tanggalStr = parsedDate.toISOString().split('T')[0];
+                            }
+                        }
+
+                        // Deteksi Jenis & Jumlah
+                        let jenis = 'masuk';
+                        let jumlah = 0;
+
+                        if (row["Pemasukan (Rp)"] && parseFloat(row["Pemasukan (Rp)"]) > 0) {
+                            jenis = 'masuk';
+                            jumlah = parseFloat(row["Pemasukan (Rp)"]);
+                        } else if (row["Pengeluaran (Rp)"] && parseFloat(row["Pengeluaran (Rp)"]) > 0) {
+                            jenis = 'keluar';
+                            jumlah = parseFloat(row["Pengeluaran (Rp)"]);
+                        } else if (row["Jenis"]) {
+                            // Antisipasi format alternatif
+                            const jenisRaw = row["Jenis"].toString().toLowerCase();
+                            jenis = (jenisRaw.includes('masuk') || jenisRaw.includes('in') || jenisRaw.includes('pemasukan')) ? 'masuk' : 'keluar';
+                            jumlah = parseFloat(row["Jumlah"]) || 0;
+                        }
+
+                        newTransactions.push({
+                            id: (Date.now() + i).toString(), // jamin ID unik sementara
+                            tanggal: tanggalStr,
+                            keterangan: row["Keterangan"].toString(),
+                            jenis: jenis,
+                            jumlah: jumlah
+                        });
+                    });
+
+                    if (newTransactions.length > 0) {
+                        // Gabungkan dengan transaksi lama atau gantikan sepenuhnya sesuai kebutuhan. 
+                        // Di sini, kita akan menggabungkannya dan mengabaikan duplikat berdasarkan tanggal & keterangan & jumlah yang persis sama.
+                        const mergedTransactions = [...transactions];
+                        
+                        newTransactions.forEach(newT => {
+                            const isDuplicate = mergedTransactions.some(oldT => 
+                                oldT.tanggal === newT.tanggal && 
+                                oldT.keterangan === newT.keterangan && 
+                                oldT.jumlah === newT.jumlah &&
+                                oldT.jenis === newT.jenis
+                            );
+                            if (!isDuplicate) {
+                                mergedTransactions.push(newT);
+                            }
+                        });
+
+                        // Urutkan kembali berdasarkan tanggal terbaru
+                        mergedTransactions.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+                        
+                        // Simpan ke cloud
+                        saveToCloud(mergedTransactions);
+                        showToast(`Sukses mengimpor ${newTransactions.length} transaksi baru!`);
+                    } else {
+                        showToast("Tidak ada transaksi valid yang ditemukan di file ini.");
+                    }
+
+                } catch (err) {
+                    console.error("Gagal mengurai Excel:", err);
+                    showToast("Format file Excel tidak dikenali!");
+                }
+                
+                // Reset input agar bisa upload file yang sama kembali jika diperlukan
+                e.target.value = '';
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Export data ke file Excel (.xlsx) menggunakan SheetJS
+        function exportToExcel() {
+            if(transactions.length === 0) {
+                showToast("Tidak ada data untuk diexport!");
+                return;
+            }
+
+            // Persiapkan data untuk Excel
+            const excelData = transactions.map((t, index) => ({
+                "No": index + 1,
+                "Tanggal": formatTanggal(t.tanggal),
+                "Tanggal (Format Raw)": t.tanggal,
+                "Keterangan": t.keterangan,
+                "Jenis": t.jenis === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
+                "Pemasukan (Rp)": t.jenis === 'masuk' ? t.jumlah : 0,
+                "Pengeluaran (Rp)": t.jenis === 'keluar' ? t.jumlah : 0
+            }));
+
+            // Tambahkan baris total di bawah
+            let sumMasuk = 0;
+            let sumKeluar = 0;
+            transactions.forEach(t => {
+                if(t.jenis === 'masuk') sumMasuk += t.jumlah;
+                else sumKeluar += t.jumlah;
+            });
+
+            excelData.push({}); // Baris kosong
+            excelData.push({
+                "Keterangan": "TOTAL",
+                "Pemasukan (Rp)": sumMasuk,
+                "Pengeluaran (Rp)": sumKeluar
+            });
+            excelData.push({
+                "Keterangan": "SALDO AKHIR",
+                "Pemasukan (Rp)": sumMasuk - sumKeluar
+            });
+
+            // Buat Worksheet & Workbook
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Catatan Tabungan");
+
+            // Atur lebar kolom
+            const wscols = [
+                {wch: 5},  // No
+                {wch: 20}, // Tanggal
+                {wch: 15}, // Tanggal Raw
+                {wch: 35}, // Keterangan
+                {wch: 15}, // Jenis
+                {wch: 20}, // Pemasukan
+                {wch: 20}  // Pengeluaran
+            ];
+            worksheet['!cols'] = wscols;
+
+            // Dapatkan tanggal hari ini untuk nama file
+            const dateStr = new Date().toISOString().split('T')[0];
+            const fileName = `Tabungan_Cloud_${syncCode}_${dateStr}.xlsx`;
+
+            // Trigger download
+            XLSX.writeFile(workbook, fileName);
+            showToast("Berhasil export ke file Excel!");
+        }
+
+        // Toast Helper
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastMessage.textContent = message;
+            toast.classList.replace('translate-y-20', 'translate-y-0');
+            toast.classList.replace('opacity-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.replace('translate-y-0', 'translate-y-20');
+                toast.classList.replace('opacity-100', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
