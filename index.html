@@ -39,9 +39,9 @@
             <div>
                 <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 flex flex-wrap items-center gap-2">
                     Catatan Tabungan 
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                        <span class="w-2 h-2 bg-blue-500 rounded-full mr-1.5 animate-pulse"></span>
-                        Edisi Cloud
+                    <span id="badgeStatus" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                        <span id="badgeDot" class="w-2 h-2 bg-gray-500 rounded-full mr-1.5"></span>
+                        <span id="badgeText">Memeriksa...</span>
                     </span>
                 </h1>
                 <p class="text-sm sm:text-base text-gray-500 mt-1">Kelola, impor, dan sinkronkan tabungan Anda di semua perangkat secara real-time.</p>
@@ -52,7 +52,7 @@
                 <div class="flex-grow">
                     <span class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider block">Kode Sinkronisasi Perangkat</span>
                     <div class="flex items-center gap-2 mt-1">
-                        <span id="syncCodeDisplay" class="font-mono text-base sm:text-lg lg:text-xl font-bold text-blue-600 tracking-wider">Memuat...</span>
+                        <span id="syncCodeDisplay" class="font-mono text-base sm:text-lg lg:text-xl font-bold text-blue-600 tracking-wider">LOKAL</span>
                         <button onclick="copySyncCode()" class="text-gray-400 hover:text-blue-600 transition p-1.5 rounded-lg hover:bg-gray-100" title="Salin Kode">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -229,16 +229,14 @@
 
         // Global State & UI References
         let transactions = [];
-        let syncCode = '';
+        let syncCode = 'LOKAL';
         let dbListener = null;
         let isAuthReady = false;
-
-        // Inisialisasi Firebase Config dari Platform Environment
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        let useCloud = false;
+        let db = null;
+        let auth = null;
+        let appId = 'default-app-id';
 
         // Daftarkan fungsi ke objek window agar bisa diakses dari tag HTML onclick
         window.handleFormSubmit = handleFormSubmit;
@@ -256,42 +254,106 @@
         // Atur Tanggal Hari ini secara Default
         document.getElementById('inputTanggal').valueAsDate = new Date();
 
-        // 1. Jalankan Autentikasi terlebih dahulu (RULE 3)
-        const initAuth = async () => {
-            updateSyncStatus('yellow', 'Menghubungkan ke server...');
+        // 1. Inisialisasi Firebase secara aman (Tidak crash jika berjalan di GitHub Pages tanpa config)
+        const initFirebase = async () => {
+            // Memeriksa apakah config bawaan Canvas tersedia
+            let firebaseConfig = null;
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 }
-            } catch (error) {
-                console.error("Auth failed:", error);
-                updateSyncStatus('red', 'Gagal terhubung ke Cloud.');
-                showToast("Koneksi cloud gagal. Menggunakan mode luring.");
+            } catch (e) {
+                firebaseConfig = null;
+            }
+
+            // JIKA ANDA INGIN MENGGUNAKAN CLOUD SENDIRI DI GITHUB:
+            // Paste kode config Firebase gratis Anda di bawah ini jika ingin mengaktifkan sinkronisasi otomatis di GitHub Pages:
+            const myCustomConfig = {
+                /*
+                apiKey: "CONTOH_API_KEY_ANDA",
+                authDomain: "CONTOH_PROJECT_ID.firebaseapp.com",
+                projectId: "CONTOH_PROJECT_ID",
+                storageBucket: "CONTOH_PROJECT_ID.appspot.com",
+                messagingSenderId: "1234567890",
+                appId: "1:1234:web:abcd"
+                */
+            };
+
+            if (myCustomConfig.apiKey) {
+                firebaseConfig = myCustomConfig;
+                appId = 'my-github-app';
+            }
+
+            if (firebaseConfig) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    useCloud = true;
+                    
+                    // Setup UI Status Menghubungkan
+                    updateSyncStatus('yellow', 'Menghubungkan ke server...');
+                    
+                    // Jalankan Auth
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            isAuthReady = true;
+                            setupSyncCodeAndListener();
+                        } else {
+                            isAuthReady = false;
+                            updateSyncStatus('red', 'Sesi cloud terputus.');
+                        }
+                    });
+                } catch (error) {
+                    console.error("Firebase Auth failed, falling back to LocalStorage:", error);
+                    setupLocalMode();
+                }
+            } else {
+                // Tidak ada konfigurasi cloud (Berjalan di GitHub Pages/Lokal tanpa Cloud Setup)
+                setupLocalMode();
             }
         };
 
-        initAuth();
+        // Jalankan Inisialisasi
+        initFirebase();
 
-        // 2. Pantau Perubahan Status Autentikasi
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                isAuthReady = true;
-                setupSyncCodeAndListener();
+        // Aktifkan Mode Lokal Seutuhnya
+        function setupLocalMode() {
+            useCloud = false;
+            syncCode = 'LOKAL';
+            document.getElementById('syncCodeDisplay').textContent = 'OFFLINE';
+            updateSyncStatus('gray', 'Mode Lokal (Tersimpan di Browser)');
+            
+            // Ubah badge status header
+            const badgeStatus = document.getElementById('badgeStatus');
+            const badgeDot = document.getElementById('badgeDot');
+            const badgeText = document.getElementById('badgeText');
+            badgeStatus.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600";
+            badgeDot.className = "w-2 h-2 bg-gray-400 rounded-full mr-1.5";
+            badgeText.textContent = "Mode Lokal";
+
+            // Ambil data langsung dari localStorage
+            const savedData = localStorage.getItem('dataTabungan');
+            if (savedData) {
+                transactions = JSON.parse(savedData);
             } else {
-                isAuthReady = false;
-                updateSyncStatus('red', 'Sesi cloud terputus.');
+                transactions = [];
             }
-        });
+            renderApp();
+        }
 
-        // Setup Kode Sinkronisasi & Firestore Listener (RULE 1 & 2)
+        // Setup Kode Sinkronisasi & Firestore Listener (Hanya jika Cloud Aktif)
         function setupSyncCodeAndListener() {
-            // Ambil dari localStorage jika sebelumnya sudah pernah tersimpan
             let localCode = localStorage.getItem('savings_sync_code');
             
             if (!localCode) {
-                // Buat kode sinkronisasi unik baru jika belum ada
                 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
                 let randomId = '';
                 for (let i = 0; i < 6; i++) {
@@ -304,15 +366,19 @@
             syncCode = localCode;
             document.getElementById('syncCodeDisplay').textContent = syncCode;
 
-            // Jika ada listener lama, matikan dulu agar tidak terjadi kebocoran memori
             if (dbListener) {
                 dbListener();
             }
 
-            // Jalankan Listener Real-time (RULE 1: Strict Paths, RULE 2: No Complex Queries)
+            // Ubah badge status header ke Cloud
+            const badgeStatus = document.getElementById('badgeStatus');
+            const badgeDot = document.getElementById('badgeDot');
+            const badgeText = document.getElementById('badgeText');
+            badgeStatus.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800";
+            badgeDot.className = "w-2 h-2 bg-blue-500 rounded-full mr-1.5 animate-pulse";
+            badgeText.textContent = "Edisi Cloud";
+
             updateSyncStatus('yellow', 'Mengunduh data...');
-            
-            // Path: /artifacts/{appId}/public/data/savings/{syncCode}
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'savings', syncCode);
 
             dbListener = onSnapshot(docRef, (docSnap) => {
@@ -321,7 +387,6 @@
                     transactions = data.transactions || [];
                     updateSyncStatus('green', 'Cloud Terhubung (Real-time)');
                 } else {
-                    // Jika data baru di cloud kosong, sinkronkan data lokal lama (jika ada) ke cloud
                     const savedLocalData = localStorage.getItem('dataTabungan');
                     if (savedLocalData) {
                         transactions = JSON.parse(savedLocalData);
@@ -338,9 +403,16 @@
             });
         }
 
-        // Simpan Data Tabungan ke Cloud
+        // Simpan Data Tabungan ke Cloud / Lokal
         async function saveToCloud(updatedTransactions) {
-            if (!isAuthReady || !auth.currentUser) return;
+            // Selalu simpan ke localStorage sebagai backup utama yang sangat aman
+            localStorage.setItem('dataTabungan', JSON.stringify(updatedTransactions));
+            transactions = updatedTransactions;
+
+            if (!useCloud || !isAuthReady || !auth.currentUser) {
+                renderApp();
+                return;
+            }
 
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'savings', syncCode);
             try {
@@ -348,11 +420,9 @@
                     transactions: updatedTransactions,
                     lastUpdated: new Date().toISOString()
                 });
-                // Simpan juga salinan cadangan ke localStorage
-                localStorage.setItem('dataTabungan', JSON.stringify(updatedTransactions));
             } catch (error) {
                 console.error("Gagal menyimpan ke Cloud:", error);
-                showToast("Gagal menyimpan ke Cloud. Data tersimpan lokal.");
+                showToast("Gagal menyimpan ke Cloud. Data tetap aman di browser Anda.");
             }
         }
 
@@ -364,6 +434,7 @@
             dot.className = 'w-2.5 h-2.5 rounded-full';
             if (color === 'green') dot.classList.add('bg-green-500');
             else if (color === 'yellow') dot.classList.add('bg-yellow-500');
+            else if (color === 'gray') dot.classList.add('bg-gray-400');
             else dot.classList.add('bg-red-500');
 
             label.textContent = text;
@@ -371,6 +442,10 @@
 
         // Hubungkan kode yang ada dari perangkat lain
         async function connectExistingCode() {
+            if (!useCloud) {
+                showToast("Fitur sinkronisasi tidak aktif dalam Mode Lokal.");
+                return;
+            }
             const inputCode = document.getElementById('syncInputCode').value.trim().toUpperCase();
             if (!inputCode) {
                 showToast("Silakan masukkan kode!");
@@ -385,19 +460,16 @@
             updateSyncStatus('yellow', 'Menghubungkan kode...');
             
             try {
-                // Periksa apakah dokumen tersebut sudah ada di cloud
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'savings', inputCode);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    // Jika ditemukan, gabungkan atau langsung gunakan data dari kode tersebut
                     syncCode = inputCode;
                     localStorage.setItem('savings_sync_code', syncCode);
                     setupSyncCodeAndListener();
                     closeSyncModal();
                     showToast("Koneksi berhasil! Memuat data...");
                 } else {
-                    // Jika tidak ada di cloud, konfirmasi apakah ingin membuat data baru dengan kode tersebut
                     if (confirm(`Kode "${inputCode}" tidak ditemukan di database cloud. Apakah Anda ingin membuat ruangan penyimpanan baru dengan kode ini?`)) {
                         syncCode = inputCode;
                         localStorage.setItem('savings_sync_code', syncCode);
@@ -466,7 +538,7 @@
         // Hapus semua data
         function clearAllData() {
             if(transactions.length === 0) return;
-            if(confirm('PERHATIAN: Anda yakin ingin menghapus SEMUA riwayat tabungan? Data akan ikut terhapus dari semua perangkat yang terhubung.')) {
+            if(confirm('PERHATIAN: Anda yakin ingin menghapus SEMUA riwayat tabungan? Data akan dikosongkan.')) {
                 saveToCloud([]);
                 showToast("Semua data berhasil dikosongkan.");
             }
@@ -488,11 +560,9 @@
             }
 
             transactions.forEach(t => {
-                // Kalkulasi
                 if (t.jenis === 'masuk') totalMasuk += t.jumlah;
                 else totalKeluar += t.jumlah;
 
-                // Render Baris Tabel
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50/80 transition group';
                 
@@ -525,7 +595,6 @@
             document.getElementById('totalKeluar').textContent = formatRupiah(totalKeluar);
             document.getElementById('totalSaldo').textContent = formatRupiah(totalSaldo);
             
-            // Ubah warna saldo jika negatif
             if(totalSaldo < 0) {
                 document.getElementById('totalSaldo').className = 'text-2xl sm:text-3xl lg:text-4xl font-extrabold text-red-600 mt-2 break-all';
             } else {
@@ -549,8 +618,12 @@
             return new Date(dateString).toLocaleDateString('id-ID', options);
         }
 
-        // Copy Kode Sinkronisasi dengan kompatibilitas iFrame (execCommand)
+        // Copy Kode Sinkronisasi
         function copySyncCode() {
+            if (!useCloud) {
+                showToast("Kode sinkronisasi dinonaktifkan dalam Mode Lokal.");
+                return;
+            }
             const tempInput = document.createElement("input");
             tempInput.value = syncCode;
             document.body.appendChild(tempInput);
@@ -562,6 +635,10 @@
 
         // Tampilkan Modal Sync
         function openSyncModal() {
+            if (!useCloud) {
+                alert("Mode Sinkronisasi Cloud bawaan dinonaktifkan jika file dijalankan di luar platform kami.\n\nNamun, Anda tetap bisa memakai aplikasi ini secara utuh di perangkat ini (data tersimpan di browser Anda).\n\nJika ingin sinkronisasi multi-perangkat aktif di GitHub Pages Anda, buka file HTML Anda dan masukkan konfigurasi database Firebase gratis Anda pada bagian 'myCustomConfig' di dalam kode.");
+                return;
+            }
             document.getElementById('syncInputCode').value = '';
             const modal = document.getElementById('syncModal');
             modal.classList.replace('hidden', 'flex');
@@ -608,11 +685,8 @@
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
-                    // Ambil sheet pertama
                     const sheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[sheetName];
-                    
-                    // Konversi ke format JSON JSON
                     const rawRows = XLSX.utils.sheet_to_json(worksheet);
                     
                     if (rawRows.length === 0) {
@@ -622,16 +696,13 @@
 
                     const newTransactions = [];
                     
-                    // Parsing baris per baris secara hati-hati
                     rawRows.forEach((row, i) => {
-                        // Lewati baris ringkasan, baris kosong, atau baris total
                         if (!row["Keterangan"] || row["Keterangan"] === "TOTAL" || row["Keterangan"] === "SALDO AKHIR") {
                             return;
                         }
 
-                        // Mengurai tanggal raw (mendukung format ekspor 'YYYY-MM-DD')
                         let tanggalRaw = row["Tanggal (Format Raw)"] || row["Tanggal"];
-                        let tanggalStr = new Date().toISOString().split('T')[0]; // fallback hari ini
+                        let tanggalStr = new Date().toISOString().split('T')[0];
                         
                         if (tanggalRaw) {
                             const parsedDate = new Date(tanggalRaw);
@@ -640,7 +711,6 @@
                             }
                         }
 
-                        // Deteksi Jenis & Jumlah
                         let jenis = 'masuk';
                         let jumlah = 0;
 
@@ -651,14 +721,13 @@
                             jenis = 'keluar';
                             jumlah = parseFloat(row["Pengeluaran (Rp)"]);
                         } else if (row["Jenis"]) {
-                            // Antisipasi format alternatif
                             const jenisRaw = row["Jenis"].toString().toLowerCase();
                             jenis = (jenisRaw.includes('masuk') || jenisRaw.includes('in') || jenisRaw.includes('pemasukan')) ? 'masuk' : 'keluar';
                             jumlah = parseFloat(row["Jumlah"]) || 0;
                         }
 
                         newTransactions.push({
-                            id: (Date.now() + i).toString(), // jamin ID unik sementara
+                            id: (Date.now() + i).toString(),
                             tanggal: tanggalStr,
                             keterangan: row["Keterangan"].toString(),
                             jenis: jenis,
@@ -667,8 +736,6 @@
                     });
 
                     if (newTransactions.length > 0) {
-                        // Gabungkan dengan transaksi lama atau gantikan sepenuhnya sesuai kebutuhan. 
-                        // Di sini, kita akan menggabungkannya dan mengabaikan duplikat berdasarkan tanggal & keterangan & jumlah yang persis sama.
                         const mergedTransactions = [...transactions];
                         
                         newTransactions.forEach(newT => {
@@ -683,22 +750,18 @@
                             }
                         });
 
-                        // Urutkan kembali berdasarkan tanggal terbaru
                         mergedTransactions.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
                         
-                        // Simpan ke cloud
                         saveToCloud(mergedTransactions);
                         showToast(`Sukses mengimpor ${newTransactions.length} transaksi baru!`);
                     } else {
-                        showToast("Tidak ada transaksi valid yang ditemukan di file ini.");
+                        showToast("Tidak ada transaksi valid yang ditemukan.");
                     }
 
                 } catch (err) {
                     console.error("Gagal mengurai Excel:", err);
                     showToast("Format file Excel tidak dikenali!");
                 }
-                
-                // Reset input agar bisa upload file yang sama kembali jika diperlukan
                 e.target.value = '';
             };
             
@@ -712,7 +775,6 @@
                 return;
             }
 
-            // Persiapkan data untuk Excel
             const excelData = transactions.map((t, index) => ({
                 "No": index + 1,
                 "Tanggal": formatTanggal(t.tanggal),
@@ -723,7 +785,6 @@
                 "Pengeluaran (Rp)": t.jenis === 'keluar' ? t.jumlah : 0
             }));
 
-            // Tambahkan baris total di bawah
             let sumMasuk = 0;
             let sumKeluar = 0;
             transactions.forEach(t => {
@@ -731,7 +792,7 @@
                 else sumKeluar += t.jumlah;
             });
 
-            excelData.push({}); // Baris kosong
+            excelData.push({});
             excelData.push({
                 "Keterangan": "TOTAL",
                 "Pemasukan (Rp)": sumMasuk,
@@ -742,28 +803,24 @@
                 "Pemasukan (Rp)": sumMasuk - sumKeluar
             });
 
-            // Buat Worksheet & Workbook
             const worksheet = XLSX.utils.json_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Catatan Tabungan");
 
-            // Atur lebar kolom
             const wscols = [
-                {wch: 5},  // No
-                {wch: 20}, // Tanggal
-                {wch: 15}, // Tanggal Raw
-                {wch: 35}, // Keterangan
-                {wch: 15}, // Jenis
-                {wch: 20}, // Pemasukan
-                {wch: 20}  // Pengeluaran
+                {wch: 5},
+                {wch: 20},
+                {wch: 15},
+                {wch: 35},
+                {wch: 15},
+                {wch: 20},
+                {wch: 20}
             ];
             worksheet['!cols'] = wscols;
 
-            // Dapatkan tanggal hari ini untuk nama file
             const dateStr = new Date().toISOString().split('T')[0];
-            const fileName = `Tabungan_Cloud_${syncCode}_${dateStr}.xlsx`;
+            const fileName = `Tabungan_${syncCode}_${dateStr}.xlsx`;
 
-            // Trigger download
             XLSX.writeFile(workbook, fileName);
             showToast("Berhasil export ke file Excel!");
         }
