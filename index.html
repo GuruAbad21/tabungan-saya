@@ -222,21 +222,24 @@
                 </div>
             </div>
 
-            <!-- Konten Tab 2: Konfigurasi Firebase Sendiri -->
+            <!-- Konten Tab 2: Konfigurasi Firebase Sendiri (DIPERBARUI) -->
             <div id="tab-config" class="hidden space-y-4">
-                <div class="bg-blue-50 text-blue-800 p-3 rounded-lg text-xs space-y-1">
-                    <p class="font-bold">Langkah Cepat Aktifkan Cloud Gratis di GitHub Pages Anda:</p>
-                    <ol class="list-decimal pl-4 space-y-1">
-                        <li>Buka <a href="https://console.firebase.google.com/" target="_blank" class="underline font-bold">Firebase Console</a> (Masuk dengan akun Google).</li>
-                        <li>Klik <b>Add Project</b>, beri nama proyek bebas, lalu buat proyek.</li>
-                        <li>Di dashboard proyek Anda, buat aplikasi web baru (klik ikon <span class="font-mono font-bold">&lt;/&gt;</span>).</li>
-                        <li>Salin kode JSON konfigurasi (yang ada di dalam <span class="font-mono bg-blue-150 px-1 rounded">firebaseConfig = { ... }</span>).</li>
-                        <li>Tempel JSON tersebut di bawah ini lalu klik Simpan.</li>
+                <div class="bg-amber-50 text-amber-900 border border-amber-200 p-4 rounded-lg text-xs space-y-2">
+                    <p class="font-bold text-sm text-amber-800">⚠️ 2 Langkah Wajib di Firebase Console Agar Online:</p>
+                    <ol class="list-decimal pl-4 space-y-2">
+                        <li>
+                            <b>Aktifkan Login Anonim (Sangat Penting):</b>
+                            <br>Buka konsol Firebase -> Menu <b>Authentication</b> -> Tab <b>Sign-in method</b> -> Klik <b>Add new provider</b> -> Pilih <b>Anonymous (Anonim)</b> -> Klik tombol slide <b>Enable</b> -> Klik <b>Save</b>.
+                        </li>
+                        <li>
+                            <b>Buat Database Firestore:</b>
+                            <br>Buka menu <b>Firestore Database</b> -> Klik <b>Create database</b> -> Pilih lokasi -> Pilih <b>Start in test mode</b> (Mulai dalam mode pengujian agar bisa tulis-baca gratis tanpa proteksi akun) -> Klik <b>Create/Enable</b>.
+                        </li>
                     </ol>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Tempel JSON Konfigurasi Firebase Di Sini</label>
-                    <textarea id="firebaseConfigTextarea" rows="6" placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}' class="w-full border border-gray-300 rounded-lg p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <textarea id="firebaseConfigTextarea" rows="5" placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}' class="w-full border border-gray-300 rounded-lg p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="resetCustomConfig()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-lg transition text-xs border border-red-200">Reset Ke Lokal</button>
@@ -324,10 +327,26 @@
                     
                     updateSyncStatus('yellow', 'Menghubungkan ke server...');
                     
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token && appId !== 'custom-user-app') {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
+                    // Deteksi Eror Auth Secara Spesifik dan beri tahu Pengguna
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token && appId !== 'custom-user-app') {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (authError) {
+                        console.error("Authentication Error Details:", authError);
+                        
+                        let errorMessage = "Koneksi Cloud gagal: " + authError.message;
+                        
+                        if (authError.code === 'auth/operation-not-allowed') {
+                            errorMessage = "Eror: Metode login 'Anonymous' belum diaktifkan di Firebase Console Anda!";
+                            alert("⚠️ PERINGATAN CLOUD:\n\nKoneksi Firebase ditolak karena Anda belum mengaktifkan metode masuk 'Anonymous' di Firebase Console.\n\nSilakan ikuti panduan di menu 'Pengaturan Cloud -> Aktifkan Cloud Pribadi' langkah nomor 1.");
+                        } else {
+                            alert("Koneksi Cloud Firebase Gagal!\nEror: " + authError.message + "\n\nAplikasi otomatis beralih ke Mode Lokal.");
+                        }
+                        
+                        throw authError; // Lempar ke catch luar untuk memicu setupLocalMode()
                     }
 
                     onAuthStateChanged(auth, (user) => {
@@ -340,7 +359,7 @@
                         }
                     });
                 } catch (error) {
-                    console.error("Koneksi Firebase gagal, mengaktifkan mode lokal:", error);
+                    console.error("Koneksi Firebase gagal total, mengaktifkan mode lokal:", error);
                     setupLocalMode();
                 }
             } else {
@@ -422,8 +441,12 @@
                 }
                 renderApp();
             }, (error) => {
-                console.error("Error listening to snapshot:", error);
+                console.error("Firestore Snapshot Error Details:", error);
                 updateSyncStatus('red', 'Gagal memuat dari Cloud.');
+                
+                if (error.code === 'permission-denied') {
+                    alert("⚠️ ERROR DATABASE (FIRESTORE):\n\nKoneksi Cloud sukses, tetapi ditolak saat mencoba membaca database.\n\nHal ini disebabkan karena aturan (Rules) Firestore Anda masih terkunci. Silakan buka Firebase Console -> Firestore Database -> Rules -> Ubah rules menjadi 'allow read, write: if true;' atau atur dalam 'Test Mode'.");
+                }
             });
         }
 
