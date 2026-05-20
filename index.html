@@ -29,7 +29,7 @@
         }
     </style>
 </head>
-<body class="text-gray-800 antialiased min-h-screen flex flex-col justify-between">
+<body class="text-gray-800 antialiased min-h-screen flex flex-col justify-between bg-gray-50">
 
     <!-- Wrapper Kontainer Utama yang Dinamis (Mendukung hingga layar Ultra-Wide / PID) -->
     <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 flex-grow">
@@ -47,12 +47,12 @@
                 <p class="text-sm sm:text-base text-gray-500 mt-1">Kelola, impor, dan sinkronkan tabungan Anda di semua perangkat secara real-time.</p>
             </div>
             
-            <!-- Cloud Sync Card (Fleksibel menyesuaikan ukuran layar) -->
+            <!-- Cloud Sync Card -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 lg:self-start xl:self-center">
                 <div class="flex-grow">
                     <span class="text-[10px] sm:text-xs text-gray-400 font-bold uppercase tracking-wider block">Kode Sinkronisasi Perangkat</span>
                     <div class="flex items-center gap-2 mt-1">
-                        <span id="syncCodeDisplay" class="font-mono text-base sm:text-lg lg:text-xl font-bold text-blue-600 tracking-wider">LOKAL</span>
+                        <span id="syncCodeDisplay" class="font-mono text-base sm:text-lg lg:text-xl font-bold text-blue-600 tracking-wider">Memuat...</span>
                         <button onclick="copySyncCode()" class="text-gray-400 hover:text-blue-600 transition p-1.5 rounded-lg hover:bg-gray-100" title="Salin Kode">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -62,18 +62,18 @@
                 </div>
                 <div class="hidden sm:block h-10 w-px bg-gray-200"></div>
                 <div class="flex flex-col gap-1.5 justify-center">
-                    <button onclick="openSyncModal()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg transition text-center min-h-[38px] flex items-center justify-center">
-                        Hubungkan Perangkat Lain
+                    <button onclick="openSyncModal()" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-4 py-2 rounded-lg transition text-center min-h-[38px] flex items-center justify-center">
+                        Pengaturan Cloud
                     </button>
                     <div class="flex items-center gap-1.5 justify-center sm:justify-start">
                         <span id="syncStatusDot" class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-                        <span id="syncStatusText" class="text-xs text-gray-500 font-medium">Menghubungkan ke cloud...</span>
+                        <span id="syncStatusText" class="text-xs text-gray-500 font-medium">Memeriksa jaringan...</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Ringkasan Saldo (Grid dinamis 1, 2, atau 3 kolom) -->
+        <!-- Ringkasan Saldo -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-100 border-l-4 border-l-blue-500 flex flex-col justify-between">
                 <p class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Saldo</p>
@@ -92,7 +92,7 @@
         <!-- Layout Utama: Form Kiri / Atas, Tabel Kanan / Bawah -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            <!-- Form Input (Lebar 4 dari 12 kolom di layar besar) -->
+            <!-- Form Input -->
             <div class="lg:col-span-4 xl:col-span-4">
                 <div class="bg-white rounded-xl shadow-sm p-5 sm:p-6 border border-gray-150 sticky top-6">
                     <h2 class="text-lg font-bold mb-4 border-b pb-2 text-gray-900">Tambah Catatan</h2>
@@ -104,7 +104,7 @@
                         
                         <div>
                             <label class="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Keterangan</label>
-                            <input type="text" id="inputKeterangan" placeholder="Contoh: Gaji bulani ini, Beli sepatu..." required class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="text" id="inputKeterangan" placeholder="Contoh: Gaji bulanan ini, Beli sepatu..." required class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
 
                         <div>
@@ -133,13 +133,12 @@
                 </div>
             </div>
 
-            <!-- Tabel Data (Lebar 8 dari 12 kolom di layar besar) -->
+            <!-- Tabel Data -->
             <div class="lg:col-span-8 xl:col-span-8">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-150 overflow-hidden">
                     <div class="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white">
                         <h2 class="text-lg font-bold text-gray-900">Riwayat Transaksi</h2>
                         <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                            <!-- Input File Tersembunyi untuk Impor -->
                             <input type="file" id="importExcelInput" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
                             
                             <button onclick="triggerImport()" class="flex-grow sm:flex-initial text-xs sm:text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-1.5 border border-blue-200 min-h-[40px]">
@@ -158,7 +157,6 @@
                         </div>
                     </div>
                     
-                    <!-- Tabel Wrapper dengan Scroll Kustom untuk mencegah pecah di layar HP -->
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left border-collapse min-w-[600px] lg:min-w-0">
                             <thead>
@@ -171,46 +169,78 @@
                                 </tr>
                             </thead>
                             <tbody id="tableBody" class="divide-y divide-gray-100 text-sm">
-                                <!-- Data akan dirender di sini via JS -->
+                                <!-- Data render via JS -->
                             </tbody>
                         </table>
                     </div>
                     
-                    <!-- Pesan Kosong -->
                     <div id="emptyState" class="hidden p-12 text-center text-gray-500">
-                        <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                         </svg>
                         <p class="font-medium text-gray-600">Belum ada catatan tabungan.</p>
-                        <p class="text-sm text-gray-400 mt-1">Silakan tambah catatan atau pilih "Impor Excel" untuk memuat file ekspor Anda.</p>
+                        <p class="text-sm text-gray-400 mt-1">Mulai tambah catatan tabungan Anda.</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer Modern -->
+    <!-- Footer -->
     <footer class="w-full text-center py-6 text-xs text-gray-400 border-t border-gray-200 bg-white mt-12">
         <div class="max-w-[1600px] mx-auto px-4">
-            Catatan Tabungan Cloud &copy; 2026 - Mendukung Laptop, HP, Tablet, dan PID
+            Catatan Tabungan Cloud &copy; 2026 - Layar Responsif Adaptif
         </div>
     </footer>
 
-    <!-- Modal Sinkronisasi -->
-    <div id="syncModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in duration-200">
-            <h3 class="text-lg font-bold text-gray-900 mb-2">Hubungkan Perangkat Baru</h3>
-            <p class="text-sm text-gray-500 mb-4">
-                Masukkan Kode Sinkronisasi dari perangkat lama Anda di bawah ini untuk menyatukan dan mengakses data yang sama secara live.
-            </p>
-            <div class="space-y-4">
+    <!-- Modal Pengaturan Cloud & Sinkronisasi -->
+    <div id="syncModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 animate-in fade-in duration-200 my-8">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-xl font-bold text-gray-900">Pengaturan Cloud & Sinkronisasi</h3>
+                <button onclick="closeSyncModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            </div>
+            
+            <!-- Tab Menu -->
+            <div class="flex border-b mb-4">
+                <button onclick="switchTab('tab-sync')" id="btn-tab-sync" class="flex-1 py-2 font-semibold text-sm text-blue-600 border-b-2 border-blue-600 text-center">Hubungkan HP / Perangkat</button>
+                <button onclick="switchTab('tab-config')" id="btn-tab-config" class="flex-1 py-2 font-semibold text-sm text-gray-500 hover:text-blue-600 text-center">Aktifkan Cloud Pribadi (Gratis)</button>
+            </div>
+
+            <!-- Konten Tab 1: Sinkronisasi Perangkat -->
+            <div id="tab-sync" class="space-y-4">
+                <p class="text-xs sm:text-sm text-gray-500">
+                    Masukkan Kode Sinkronisasi dari perangkat lama Anda di bawah ini untuk menyatukan dan mengakses data yang sama secara live.
+                </p>
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Kode Sinkronisasi Perangkat Lama</label>
                     <input type="text" id="syncInputCode" placeholder="Contoh: TAB-XXXXXX" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 font-mono text-center tracking-wider text-lg uppercase focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="closeSyncModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 rounded-lg transition">Batal</button>
-                    <button onclick="connectExistingCode()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition">Hubungkan</button>
+                    <button onclick="closeSyncModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 rounded-lg transition text-sm">Batal</button>
+                    <button onclick="connectExistingCode()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition text-sm">Hubungkan</button>
+                </div>
+            </div>
+
+            <!-- Konten Tab 2: Konfigurasi Firebase Sendiri -->
+            <div id="tab-config" class="hidden space-y-4">
+                <div class="bg-blue-50 text-blue-800 p-3 rounded-lg text-xs space-y-1">
+                    <p class="font-bold">Langkah Cepat Aktifkan Cloud Gratis di GitHub Pages Anda:</p>
+                    <ol class="list-decimal pl-4 space-y-1">
+                        <li>Buka <a href="https://console.firebase.google.com/" target="_blank" class="underline font-bold">Firebase Console</a> (Masuk dengan akun Google).</li>
+                        <li>Klik <b>Add Project</b>, beri nama proyek bebas, lalu buat proyek.</li>
+                        <li>Di dashboard proyek Anda, buat aplikasi web baru (klik ikon <span class="font-mono font-bold">&lt;/&gt;</span>).</li>
+                        <li>Salin kode JSON konfigurasi (yang ada di dalam <span class="font-mono bg-blue-150 px-1 rounded">firebaseConfig = { ... }</span>).</li>
+                        <li>Tempel JSON tersebut di bawah ini lalu klik Simpan.</li>
+                    </ol>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Tempel JSON Konfigurasi Firebase Di Sini</label>
+                    <textarea id="firebaseConfigTextarea" rows="6" placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}' class="w-full border border-gray-300 rounded-lg p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="resetCustomConfig()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-lg transition text-xs border border-red-200">Reset Ke Lokal</button>
+                    <button onclick="saveCustomConfig()" class="flex-grow bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition text-xs text-center">Simpan & Aktifkan Cloud</button>
                 </div>
             </div>
         </div>
@@ -250,39 +280,39 @@
         window.closeSyncModal = closeSyncModal;
         window.connectExistingCode = connectExistingCode;
         window.updateRadioStyle = updateRadioStyle;
+        window.switchTab = switchTab;
+        window.saveCustomConfig = saveCustomConfig;
+        window.resetCustomConfig = resetCustomConfig;
 
         // Atur Tanggal Hari ini secara Default
         document.getElementById('inputTanggal').valueAsDate = new Date();
 
-        // 1. Inisialisasi Firebase secara aman (Tidak crash jika berjalan di GitHub Pages tanpa config)
+        // 1. Inisialisasi Firebase secara dinamis & aman
         const initFirebase = async () => {
-            // Memeriksa apakah config bawaan Canvas tersedia
             let firebaseConfig = null;
-            try {
-                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    firebaseConfig = JSON.parse(__firebase_config);
-                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            // Cek apakah ada config kustom yang disimpan di browser localStorage
+            const savedConfig = localStorage.getItem('custom_firebase_config_json');
+            if (savedConfig) {
+                try {
+                    firebaseConfig = JSON.parse(savedConfig);
+                    appId = 'custom-user-app';
+                    document.getElementById('firebaseConfigTextarea').value = JSON.stringify(firebaseConfig, null, 2);
+                } catch (e) {
+                    console.error("Gagal membaca config kustom tersimpan:", e);
                 }
-            } catch (e) {
-                firebaseConfig = null;
             }
 
-            // JIKA ANDA INGIN MENGGUNAKAN CLOUD SENDIRI DI GITHUB:
-            // Paste kode config Firebase gratis Anda di bawah ini jika ingin mengaktifkan sinkronisasi otomatis di GitHub Pages:
-            const myCustomConfig = {
-                /*
-                apiKey: "CONTOH_API_KEY_ANDA",
-                authDomain: "CONTOH_PROJECT_ID.firebaseapp.com",
-                projectId: "CONTOH_PROJECT_ID",
-                storageBucket: "CONTOH_PROJECT_ID.appspot.com",
-                messagingSenderId: "1234567890",
-                appId: "1:1234:web:abcd"
-                */
-            };
-
-            if (myCustomConfig.apiKey) {
-                firebaseConfig = myCustomConfig;
-                appId = 'my-github-app';
+            // Jika tidak ada kustom config, coba cek config bawaan dari platform
+            if (!firebaseConfig) {
+                try {
+                    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                        firebaseConfig = JSON.parse(__firebase_config);
+                        appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                    }
+                } catch (e) {
+                    firebaseConfig = null;
+                }
             }
 
             if (firebaseConfig) {
@@ -292,11 +322,9 @@
                     db = getFirestore(app);
                     useCloud = true;
                     
-                    // Setup UI Status Menghubungkan
                     updateSyncStatus('yellow', 'Menghubungkan ke server...');
                     
-                    // Jalankan Auth
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token && appId !== 'custom-user-app') {
                         await signInWithCustomToken(auth, __initial_auth_token);
                     } else {
                         await signInAnonymously(auth);
@@ -312,11 +340,10 @@
                         }
                     });
                 } catch (error) {
-                    console.error("Firebase Auth failed, falling back to LocalStorage:", error);
+                    console.error("Koneksi Firebase gagal, mengaktifkan mode lokal:", error);
                     setupLocalMode();
                 }
             } else {
-                // Tidak ada konfigurasi cloud (Berjalan di GitHub Pages/Lokal tanpa Cloud Setup)
                 setupLocalMode();
             }
         };
@@ -331,7 +358,6 @@
             document.getElementById('syncCodeDisplay').textContent = 'OFFLINE';
             updateSyncStatus('gray', 'Mode Lokal (Tersimpan di Browser)');
             
-            // Ubah badge status header
             const badgeStatus = document.getElementById('badgeStatus');
             const badgeDot = document.getElementById('badgeDot');
             const badgeText = document.getElementById('badgeText');
@@ -339,7 +365,6 @@
             badgeDot.className = "w-2 h-2 bg-gray-400 rounded-full mr-1.5";
             badgeText.textContent = "Mode Lokal";
 
-            // Ambil data langsung dari localStorage
             const savedData = localStorage.getItem('dataTabungan');
             if (savedData) {
                 transactions = JSON.parse(savedData);
@@ -349,7 +374,7 @@
             renderApp();
         }
 
-        // Setup Kode Sinkronisasi & Firestore Listener (Hanya jika Cloud Aktif)
+        // Setup Kode Sinkronisasi & Firestore Listener
         function setupSyncCodeAndListener() {
             let localCode = localStorage.getItem('savings_sync_code');
             
@@ -370,7 +395,6 @@
                 dbListener();
             }
 
-            // Ubah badge status header ke Cloud
             const badgeStatus = document.getElementById('badgeStatus');
             const badgeDot = document.getElementById('badgeDot');
             const badgeText = document.getElementById('badgeText');
@@ -405,7 +429,6 @@
 
         // Simpan Data Tabungan ke Cloud / Lokal
         async function saveToCloud(updatedTransactions) {
-            // Selalu simpan ke localStorage sebagai backup utama yang sangat aman
             localStorage.setItem('dataTabungan', JSON.stringify(updatedTransactions));
             transactions = updatedTransactions;
 
@@ -422,7 +445,44 @@
                 });
             } catch (error) {
                 console.error("Gagal menyimpan ke Cloud:", error);
-                showToast("Gagal menyimpan ke Cloud. Data tetap aman di browser Anda.");
+                showToast("Gagal menyimpan ke Cloud. Data tetap aman di browser.");
+            }
+        }
+
+        // Simpan konfigurasi kustom dari text area ke localStorage
+        function saveCustomConfig() {
+            const rawJson = document.getElementById('firebaseConfigTextarea').value.trim();
+            if (!rawJson) {
+                showToast("Mohon masukkan kode konfigurasi Firebase terlebih dahulu!");
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(rawJson);
+                if (!parsed.apiKey || !parsed.projectId) {
+                    showToast("Konfigurasi tidak lengkap. Pastikan mengandung apiKey dan projectId!");
+                    return;
+                }
+                
+                // Simpan ke localStorage
+                localStorage.setItem('custom_firebase_config_json', JSON.stringify(parsed));
+                showToast("Konfigurasi Cloud berhasil disimpan! Memuat ulang...");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } catch (err) {
+                showToast("Format JSON salah! Pastikan tanda petik ganda benar.");
+            }
+        }
+
+        // Hapus konfigurasi kustom dan kembali ke mode lokal
+        function resetCustomConfig() {
+            if (confirm("Apakah Anda ingin menghapus konfigurasi cloud dan kembali ke Mode Lokal seutuhnya?")) {
+                localStorage.removeItem('custom_firebase_config_json');
+                showToast("Konfigurasi dihapus. Memuat ulang ke mode lokal...");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
             }
         }
 
@@ -487,6 +547,26 @@
             }
         }
 
+        // Tab Navigation di Modal
+        function switchTab(tabId) {
+            const tabSync = document.getElementById('tab-sync');
+            const tabConfig = document.getElementById('tab-config');
+            const btnSync = document.getElementById('btn-tab-sync');
+            const btnConfig = document.getElementById('btn-tab-config');
+
+            if (tabId === 'tab-sync') {
+                tabSync.classList.remove('hidden');
+                tabConfig.classList.add('hidden');
+                btnSync.className = "flex-1 py-2 font-semibold text-sm text-blue-600 border-b-2 border-blue-600 text-center";
+                btnConfig.className = "flex-1 py-2 font-semibold text-sm text-gray-500 hover:text-blue-600 text-center";
+            } else {
+                tabSync.classList.add('hidden');
+                tabConfig.classList.remove('hidden');
+                btnSync.className = "flex-1 py-2 font-semibold text-sm text-gray-500 hover:text-blue-600 text-center";
+                btnConfig.className = "flex-1 py-2 font-semibold text-sm text-blue-600 border-b-2 border-blue-600 text-center";
+            }
+        }
+
         // Kirim transaksi baru
         function handleFormSubmit(e) {
             e.preventDefault();
@@ -512,8 +592,6 @@
             };
 
             const updatedTransactions = [...transactions, newTransaction];
-            
-            // Urutkan berdasarkan tanggal terbaru
             updatedTransactions.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
             saveToCloud(updatedTransactions);
@@ -612,7 +690,7 @@
             }).format(number);
         }
 
-        // Format Tanggal (Misal: 15 Agustus 2023)
+        // Format Tanggal
         function formatTanggal(dateString) {
             const options = { year: 'numeric', month: 'long', day: 'numeric' };
             return new Date(dateString).toLocaleDateString('id-ID', options);
@@ -621,7 +699,7 @@
         // Copy Kode Sinkronisasi
         function copySyncCode() {
             if (!useCloud) {
-                showToast("Kode sinkronisasi dinonaktifkan dalam Mode Lokal.");
+                showToast("Sistem cloud belum aktif. Buka 'Pengaturan Cloud' untuk mengaktifkannya.");
                 return;
             }
             const tempInput = document.createElement("input");
@@ -635,10 +713,6 @@
 
         // Tampilkan Modal Sync
         function openSyncModal() {
-            if (!useCloud) {
-                alert("Mode Sinkronisasi Cloud bawaan dinonaktifkan jika file dijalankan di luar platform kami.\n\nNamun, Anda tetap bisa memakai aplikasi ini secara utuh di perangkat ini (data tersimpan di browser Anda).\n\nJika ingin sinkronisasi multi-perangkat aktif di GitHub Pages Anda, buka file HTML Anda dan masukkan konfigurasi database Firebase gratis Anda pada bagian 'myCustomConfig' di dalam kode.");
-                return;
-            }
             document.getElementById('syncInputCode').value = '';
             const modal = document.getElementById('syncModal');
             modal.classList.replace('hidden', 'flex');
@@ -650,7 +724,7 @@
             modal.classList.replace('flex', 'hidden');
         }
 
-        // Perbarui gaya label radio secara manual berdasarkan status pilihan
+        // Perbarui gaya label radio secara manual
         function updateRadioStyle() {
             const labelMasuk = document.getElementById('labelMasuk');
             const labelKeluar = document.getElementById('labelKeluar');
