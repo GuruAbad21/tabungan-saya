@@ -89,7 +89,7 @@
             </div>
         </div>
 
-        <!-- Layout Utama: Form Kiri / Atas, Tabel Kanan / Bawah -->
+        <!-- Layout Utama -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             <!-- Form Input -->
@@ -204,7 +204,7 @@
             <!-- Tab Menu -->
             <div class="flex border-b mb-4">
                 <button onclick="switchTab('tab-sync')" id="btn-tab-sync" class="flex-1 py-2 font-semibold text-sm text-blue-600 border-b-2 border-blue-600 text-center">Hubungkan HP / Perangkat</button>
-                <button onclick="switchTab('tab-config')" id="btn-tab-config" class="flex-1 py-2 font-semibold text-sm text-gray-500 hover:text-blue-600 text-center">Aktifkan Cloud Pribadi (Gratis)</button>
+                <button onclick="switchTab('tab-config')" id="btn-tab-config" class="flex-1 py-2 font-semibold text-sm text-gray-500 hover:text-blue-600 text-center">Atur Firebase Baru (Opsional)</button>
             </div>
 
             <!-- Konten Tab 1: Sinkronisasi Perangkat -->
@@ -222,28 +222,19 @@
                 </div>
             </div>
 
-            <!-- Konten Tab 2: Konfigurasi Firebase Sendiri (DIPERBARUI) -->
+            <!-- Konten Tab 2: Konfigurasi Firebase Sendiri -->
             <div id="tab-config" class="hidden space-y-4">
                 <div class="bg-amber-50 text-amber-900 border border-amber-200 p-4 rounded-lg text-xs space-y-2">
-                    <p class="font-bold text-sm text-amber-800">⚠️ 2 Langkah Wajib di Firebase Console Agar Online:</p>
-                    <ol class="list-decimal pl-4 space-y-2">
-                        <li>
-                            <b>Aktifkan Login Anonim (Sangat Penting):</b>
-                            <br>Buka konsol Firebase -> Menu <b>Authentication</b> -> Tab <b>Sign-in method</b> -> Klik <b>Add new provider</b> -> Pilih <b>Anonymous (Anonim)</b> -> Klik tombol slide <b>Enable</b> -> Klik <b>Save</b>.
-                        </li>
-                        <li>
-                            <b>Buat Database Firestore:</b>
-                            <br>Buka menu <b>Firestore Database</b> -> Klik <b>Create database</b> -> Pilih lokasi -> Pilih <b>Start in test mode</b> (Mulai dalam mode pengujian agar bisa tulis-baca gratis tanpa proteksi akun) -> Klik <b>Create/Enable</b>.
-                        </li>
-                    </ol>
+                    <p class="font-bold text-sm text-amber-800">⚠️ Catatan Konfigurasi Cloud:</p>
+                    <p>Konfigurasi Firebase milik Anda saat ini sudah di-hardcode di dalam sistem web ini untuk mengotomatiskan koneksi di semua perangkat Anda.</p>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Tempel JSON Konfigurasi Firebase Di Sini</label>
-                    <textarea id="firebaseConfigTextarea" rows="5" placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "projectId": "...",&#10;  "storageBucket": "...",&#10;  "messagingSenderId": "...",&#10;  "appId": "..."&#10;}' class="w-full border border-gray-300 rounded-lg p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">JSON Konfigurasi Firebase Saat Ini</label>
+                    <textarea id="firebaseConfigTextarea" rows="5" class="w-full border border-gray-300 rounded-lg p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" readonly></textarea>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="resetCustomConfig()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-lg transition text-xs border border-red-200">Reset Ke Lokal</button>
-                    <button onclick="saveCustomConfig()" class="flex-grow bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition text-xs text-center">Simpan & Aktifkan Cloud</button>
+                    <button onclick="saveCustomConfig()" class="flex-grow bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition text-xs text-center">Ganti Konfigurasi</button>
                 </div>
             </div>
         </div>
@@ -269,7 +260,7 @@
         let useCloud = false;
         let db = null;
         let auth = null;
-        let appId = 'default-app-id';
+        let appId = 'custom-user-app';
 
         // Daftarkan fungsi ke objek window agar bisa diakses dari tag HTML onclick
         window.handleFormSubmit = handleFormSubmit;
@@ -292,29 +283,27 @@
 
         // 1. Inisialisasi Firebase secara dinamis & aman
         const initFirebase = async () => {
-            let firebaseConfig = null;
+            // HARDCODE KONFIGURASI FIREBASE ANDA SEPERTI DI SCREENSHOT
+            const myCustomConfig = {
+                apiKey: "AIzaSyCHdFrKsEYUvw_Dh9VzHY_mFDfueMucX_E",
+                authDomain: "fir-fatwa.firebaseapp.com",
+                projectId: "fir-fatwa",
+                storageBucket: "fir-fatwa.firebasestorage.app",
+                messagingSenderId: "715309306487",
+                appId: "1:715309306487:web:48baaa5fe5c2725ca42c72"
+            };
 
-            // Cek apakah ada config kustom yang disimpan di browser localStorage
+            let firebaseConfig = myCustomConfig;
+            document.getElementById('firebaseConfigTextarea').value = JSON.stringify(myCustomConfig, null, 2);
+
+            // Jika di masa depan ingin ditimpa via menu Pengaturan di web:
             const savedConfig = localStorage.getItem('custom_firebase_config_json');
             if (savedConfig) {
                 try {
                     firebaseConfig = JSON.parse(savedConfig);
-                    appId = 'custom-user-app';
                     document.getElementById('firebaseConfigTextarea').value = JSON.stringify(firebaseConfig, null, 2);
                 } catch (e) {
                     console.error("Gagal membaca config kustom tersimpan:", e);
-                }
-            }
-
-            // Jika tidak ada kustom config, coba cek config bawaan dari platform
-            if (!firebaseConfig) {
-                try {
-                    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                        firebaseConfig = JSON.parse(__firebase_config);
-                        appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    }
-                } catch (e) {
-                    firebaseConfig = null;
                 }
             }
 
@@ -327,26 +316,16 @@
                     
                     updateSyncStatus('yellow', 'Menghubungkan ke server...');
                     
-                    // Deteksi Eror Auth Secara Spesifik dan beri tahu Pengguna
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token && appId !== 'custom-user-app') {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        await signInAnonymously(auth);
                     } catch (authError) {
                         console.error("Authentication Error Details:", authError);
-                        
-                        let errorMessage = "Koneksi Cloud gagal: " + authError.message;
-                        
                         if (authError.code === 'auth/operation-not-allowed') {
-                            errorMessage = "Eror: Metode login 'Anonymous' belum diaktifkan di Firebase Console Anda!";
-                            alert("⚠️ PERINGATAN CLOUD:\n\nKoneksi Firebase ditolak karena Anda belum mengaktifkan metode masuk 'Anonymous' di Firebase Console.\n\nSilakan ikuti panduan di menu 'Pengaturan Cloud -> Aktifkan Cloud Pribadi' langkah nomor 1.");
+                            alert("⚠️ ERROR: Anda belum mengaktifkan metode login 'Anonymous' di Firebase Console Proyek Anda!");
                         } else {
-                            alert("Koneksi Cloud Firebase Gagal!\nEror: " + authError.message + "\n\nAplikasi otomatis beralih ke Mode Lokal.");
+                            alert("Koneksi Firebase Gagal!\nEror: " + authError.message);
                         }
-                        
-                        throw authError; // Lempar ke catch luar untuk memicu setupLocalMode()
+                        throw authError;
                     }
 
                     onAuthStateChanged(auth, (user) => {
@@ -359,7 +338,7 @@
                         }
                     });
                 } catch (error) {
-                    console.error("Koneksi Firebase gagal total, mengaktifkan mode lokal:", error);
+                    console.error("Koneksi Firebase gagal, mengaktifkan mode lokal:", error);
                     setupLocalMode();
                 }
             } else {
@@ -398,6 +377,7 @@
             let localCode = localStorage.getItem('savings_sync_code');
             
             if (!localCode) {
+                // Gunakan kode random bawaan pertama kali, namun user bisa menyambungkannya nanti
                 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
                 let randomId = '';
                 for (let i = 0; i < 6; i++) {
@@ -443,9 +423,8 @@
             }, (error) => {
                 console.error("Firestore Snapshot Error Details:", error);
                 updateSyncStatus('red', 'Gagal memuat dari Cloud.');
-                
                 if (error.code === 'permission-denied') {
-                    alert("⚠️ ERROR DATABASE (FIRESTORE):\n\nKoneksi Cloud sukses, tetapi ditolak saat mencoba membaca database.\n\nHal ini disebabkan karena aturan (Rules) Firestore Anda masih terkunci. Silakan buka Firebase Console -> Firestore Database -> Rules -> Ubah rules menjadi 'allow read, write: if true;' atau atur dalam 'Test Mode'.");
+                    alert("⚠️ ERROR: Akses database ditolak. Silakan ubah Aturan (Rules) Cloud Firestore Anda menjadi Test Mode / allow read, write: if true;");
                 }
             });
         }
@@ -472,40 +451,30 @@
             }
         }
 
-        // Simpan konfigurasi kustom dari text area ke localStorage
+        // Simpan konfigurasi kustom dari text area ke localStorage (bila ada modifikasi di masa depan)
         function saveCustomConfig() {
             const rawJson = document.getElementById('firebaseConfigTextarea').value.trim();
             if (!rawJson) {
-                showToast("Mohon masukkan kode konfigurasi Firebase terlebih dahulu!");
+                showToast("Mohon masukkan kode konfigurasi Firebase!");
                 return;
             }
 
             try {
                 const parsed = JSON.parse(rawJson);
-                if (!parsed.apiKey || !parsed.projectId) {
-                    showToast("Konfigurasi tidak lengkap. Pastikan mengandung apiKey dan projectId!");
-                    return;
-                }
-                
-                // Simpan ke localStorage
                 localStorage.setItem('custom_firebase_config_json', JSON.stringify(parsed));
-                showToast("Konfigurasi Cloud berhasil disimpan! Memuat ulang...");
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                showToast("Konfigurasi disimpan! Memuat ulang...");
+                setTimeout(() => window.location.reload(), 1000);
             } catch (err) {
-                showToast("Format JSON salah! Pastikan tanda petik ganda benar.");
+                showToast("Format JSON salah!");
             }
         }
 
-        // Hapus konfigurasi kustom dan kembali ke mode lokal
+        // Hapus konfigurasi kustom
         function resetCustomConfig() {
-            if (confirm("Apakah Anda ingin menghapus konfigurasi cloud dan kembali ke Mode Lokal seutuhnya?")) {
+            if (confirm("Apakah Anda ingin mereset konfigurasi ke bawaan?")) {
                 localStorage.removeItem('custom_firebase_config_json');
-                showToast("Konfigurasi dihapus. Memuat ulang ke mode lokal...");
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                showToast("Konfigurasi di-reset. Memuat ulang...");
+                setTimeout(() => window.location.reload(), 1000);
             }
         }
 
@@ -722,7 +691,7 @@
         // Copy Kode Sinkronisasi
         function copySyncCode() {
             if (!useCloud) {
-                showToast("Sistem cloud belum aktif. Buka 'Pengaturan Cloud' untuk mengaktifkannya.");
+                showToast("Sistem cloud belum aktif.");
                 return;
             }
             const tempInput = document.createElement("input");
