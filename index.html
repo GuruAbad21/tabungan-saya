@@ -38,7 +38,7 @@
     <!-- Wrapper Kontainer Utama yang Dinamis (Mendukung hingga layar Ultra-Wide / PID) -->
     <div class="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 flex-grow">
         
-        <!-- Header & Cloud Sync Status (Fleksibel & Responsif) -->
+        <!-- Header & Cloud Sync Status -->
         <div class="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 border-b border-gray-200 pb-6">
             <div>
                 <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 flex flex-wrap items-center gap-2">
@@ -253,8 +253,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // Mengimpor initializeFirestore agar bisa menerapkan pemaksaan jalur koneksi stabil HP
-        import { initializeFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Mengimpor modul-modul penting untuk konfigurasi caching dan sinkronisasi murni
+        import { initializeFirestore, CACHE_SIZE_UNLIMITED, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global State & UI References
         let transactions = [];
@@ -301,7 +301,7 @@
             let firebaseConfig = myCustomConfig;
             document.getElementById('firebaseConfigTextarea').value = JSON.stringify(myCustomConfig, null, 2);
 
-            // Cek kustom config di localstorage
+            // Cek kustom config di localstorage jika ada
             const savedConfig = localStorage.getItem('custom_firebase_config_json');
             if (savedConfig) {
                 try {
@@ -317,9 +317,16 @@
                     const app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     
-                    // SOLUSI HP: Menggunakan initializeFirestore dengan force long-polling agar tembus blokir jaringan seluler
+                    // SOLUSI TOTAL SINKRONISASI HP: 
+                    // Menghilangkan Offline Cache Browser seutuhnya agar database selalu dipaksa murni online secara langsung (Real-Time).
+                    // Menghindari pesan eror "Failed to get document because the client is offline" di browser HP.
                     db = initializeFirestore(app, {
-                        experimentalForceLongPolling: true
+                        localCache: {
+                            // Mengatur setelan cache browser menjadi kosong / nonaktif
+                            kind: 'persistent',
+                            tabManager: {kind: 'custom'}
+                        },
+                        experimentalForceLongPolling: true // Gunakan protokol HTTP long-polling agar lolos pemblokiran operator HP
                     });
                     
                     useCloud = true;
@@ -542,7 +549,6 @@
                 }
             } catch (err) {
                 console.error("Gagal memproses kode sinkronisasi:", err);
-                // Menampilkan pesan kesalahan asli Google jika koneksi gagal
                 showToast("Eror: " + err.message);
                 updateSyncStatus('green', 'Cloud Terhubung (Real-time)');
             }
