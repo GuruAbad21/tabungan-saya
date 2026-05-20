@@ -252,8 +252,9 @@
     <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Mengimpor initializeFirestore agar bisa menerapkan pemaksaan jalur koneksi stabil HP
+        import { initializeFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global State & UI References
         let transactions = [];
@@ -315,9 +316,13 @@
                 try {
                     const app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
-                    db = getFirestore(app);
-                    useCloud = true;
                     
+                    // SOLUSI HP: Menggunakan initializeFirestore dengan force long-polling agar tembus blokir jaringan seluler
+                    db = initializeFirestore(app, {
+                        experimentalForceLongPolling: true
+                    });
+                    
+                    useCloud = true;
                     updateSyncStatus('yellow', 'Menghubungkan ke server...');
                     
                     try {
@@ -537,7 +542,8 @@
                 }
             } catch (err) {
                 console.error("Gagal memproses kode sinkronisasi:", err);
-                showToast("Gagal memeriksa kode. Pastikan koneksi internet HP Anda aktif.");
+                // Menampilkan pesan kesalahan asli Google jika koneksi gagal
+                showToast("Eror: " + err.message);
                 updateSyncStatus('green', 'Cloud Terhubung (Real-time)');
             }
         }
